@@ -4,7 +4,9 @@
     "keywords": ["util", "functional", "server", "client", "browser"],
     "author": "Björn",
     "contributors": [],
-    "dependencies": {},
+    "dependencies": {
+        "fabric": "^3.4"
+    },
     "devDependencies": {
         "eslint": "*"
     }

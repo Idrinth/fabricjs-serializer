@@ -15,7 +15,7 @@ class FabricJsSerializer
 		this.types[type] = {factory};
 		this.ordered.push(type);
 	}
-	fromJson(/* string */ json, /* fabricjs.Canvas */ canvas)
+	fromJson(/* string */ json, /* fabric.Canvas */ canvas)
 	{
 		const data = JSON.parse(json);
 		for (const el of canvas._objects) {
@@ -31,17 +31,17 @@ class FabricJsSerializer
 			}
 		}
 	}
-	toJson(/* fabricjs.Canvas */ canvas)
+	toJson(/* fabric.Canvas */ canvas)
 	{
 		return JSON.stringify({
-			version: canvas.version,
+			version: fabric.version,
 			objects: canvas._objects.map(object => {
 				const prev = object.includeDefaultValues;
 				object.includeDefaultValues = false;
-				const data object.toObject();
+				const data = object.toObject();
 				object.includeDefaultValues = prev;
 				return data;
-			}
+			})
 		});
 	}
 }
