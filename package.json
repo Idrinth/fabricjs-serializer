@@ -1,0 +1,27 @@
+{
+    "name": "fabricjs-serializer",
+    "version": "1.0.0",
+    "keywords": [
+        "util",
+        "functional",
+        "server",
+        "client",
+        "browser"
+    ],
+    "author": "Björn Büttner",
+    "contributors": [],
+    "dependencies": {
+        "fabric": "^3.4"
+    },
+    "devDependencies": {
+        "eslint": "^6.3",
+        "mocha": "^6.2",
+        "chai": "^4.2",
+        "rewire": "^4"
+    },
+    "scripts": {
+        "test": "mocha",
+        "lint": "eslint src",
+        "fix": "eslint --fix src"
+    }
+}
