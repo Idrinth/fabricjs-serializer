@@ -9,8 +9,8 @@ jobs:
   include:
     - language: node_js
       node_js: node
-      stage: Linting
-      name: eslint recommended
+      stage: Test
+      name: liniting
       install:
           - npm install -g eslint
       script:
@@ -18,7 +18,7 @@ jobs:
     - language: node_js
       node_js: node
       stage: Test
-      name: eslint recommended
+      name: unittest
       install:
           - npm install
       script:
