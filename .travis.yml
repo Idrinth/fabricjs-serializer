@@ -12,9 +12,9 @@ jobs:
       stage: Test
       name: liniting
       install:
-          - npm install -g eslint
+          - npm install
       script:
-          - eslint --ext .js .
+          - npm run-script lint
     - language: node_js
       node_js: node
       stage: Test
