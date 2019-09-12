@@ -1,10 +1,5 @@
 const expect = require('chai').expect;
-const fabric = require('fabric');
-const FJS = require('rewire')('../src/index.js');
-FJS.__set__('fabric', fabric.fabric);
-const FabricJsSerializer = FJS.__get__(
-  'FabricJsSerializer'
-);
+const FabricJsSerializer = require('../src/index.js');
 
 describe('serialize', () => {
   const tests = {
