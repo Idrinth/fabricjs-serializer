@@ -11,7 +11,6 @@ describe('getFabricTypes', () => {
   it('getFabricTypes should define the expected types', () => {
     const types = Object.keys(getFabricTypes()).sort();
     expect(types).to.deep.equal([
-      'activeSelection',
       'circle',
       'ellipse',
       'group',
