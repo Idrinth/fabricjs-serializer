@@ -8,8 +8,8 @@ var idrinth = idrinth || {};
 
 idrinth.FabricJsSerializer = function () {
   var SORT = {
-    BEFORE: 1,
-    AFTER: -1,
+    BEFORE: -1,
+    AFTER: 1,
     SAME: 0
   };
   var FORCE_SAVE_PROPERTIES = ['left', 'top', 'type'];
