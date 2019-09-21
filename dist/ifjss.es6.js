@@ -1,12 +1,6 @@
 var idrinth=idrinth||{};idrinth.FabricJsSerializer=(()=>{
 
 
-const SORT = {
-  BEFORE: - 1,
-  AFTER: 1,
-  SAME: 0,
-};
-
 const FORCE_SAVE_PROPERTIES = [
   'left',
   'top',
@@ -59,34 +53,55 @@ const Type = class {
 
 
 
+const getFabricTypes = () => ({
+  circle: new Type(config => new fabric.Circle(config), []),
+  ellipse: new Type(config => new fabric.Ellipse(config), []),
+  // @todo this likely needs something changed to handle internal objects
+  group: new Type(config => new fabric.Group(config.objects, config), []),
+  'i-text': new Type(config => new fabric.IText(config.text, config), []),
+  image: new Type(config => new fabric.Image.fromURL(config.src, config), []),
+  line: new Type(config => new fabric.Line(config.points, config), []),
+  linear: new Type(config => new fabric.Gradient(config), []),
+  object: new Type(config => new fabric.Object(config), []),
+  path: new Type(config => new fabric.Path(config.path, config), []),
+  point: new Type(config => new fabric.Point(config.x, config.y), []),
+  polygon: new Type(config => new fabric.Polygon(config.points, config), []),
+  polyline: new Type(config => new fabric.Polyline(config.points, config), []),
+  rect: new Type(config => new fabric.Rect(config), []),
+  radial: new Type(config => new fabric.Gradient(config), []),
+  text: new Type(config => new fabric.Text(config.text, config), []),
+  textbox: new Type(config => new fabric.Textbox(config.text, config), []),
+  triangle: new Type(config => new fabric.Triangle(config), []),
+});
 
-const isFabricClass = (/* string */ property) => {
-  if (! property.match(/^[A-Z]/u)) {
-    return false;
-  }
-  if (typeof fabric[property] !== 'function') {
-    return false;
-  }
-  if (! hasProperty(fabric[property].prototype, 'type')) {
-    return false;
-  }
-  return typeof fabric[property].prototype.type === 'string';
+const SORT = {
+  BEFORE: - 1,
+  AFTER: 1,
+  SAME: 0,
 };
 
-const getFabricTypes = () => {
-  const types = {
-    radial: new Type(fabric.Gradient, []),
-  };
-  for (const property of Object.keys(fabric)) {
-    if (isFabricClass(property)) {
-      types[fabric[property].prototype.type] = new Type(fabric[property], []);
+
+
+const sortByTypes = (
+  /* {[string]:Type} */ types,
+  /* fabric.Object[] */ objects
+) => {
+  objects.sort((/* fabric.Object */ a, /* fabric.Object */ b) => {
+    if (! hasProperty(types, a.type)) {
+      throw new Error(`Can't find a definition for given type ${ a.type }`);
     }
-  }
-  return types;
+    if (! hasProperty(types, b.type)) {
+      throw new Error(`Can't find a definition for given type ${ b.type }`);
+    }
+    if (types[a.type].isDependant(b.type)) {
+      return SORT.AFTER;
+    }
+    return types[b.type].isDependant(a.type) ? SORT.BEFORE : SORT.SAME;
+  });
 };
 
 
-var FabricJsSerializer = class {
+const FabricJsSerializer = class {
   constructor(/* fabric.Canvas */ canvas) {
     this._canvas = canvas;
     this._types = getFabricTypes();
@@ -107,22 +122,21 @@ var FabricJsSerializer = class {
     for (const el of this._canvas._objects) {
       this._canvas.remove(el);
     }
-    const types = this._types;
-    data.objects.sort((/* fabric.Object */ a, /* fabric.Object */ b) => {
-      if (! hasProperty(types, a.type)) {
-        throw new Error(`Can't find a definition for given type ${ a.type }`);
-      }
-      if (! hasProperty(types, b.type)) {
-        throw new Error(`Can't find a definition for given type ${ b.type }`);
-      }
-      if (types[a.type].isDependant(b.type)) {
-        return SORT.AFTER;
-      }
-      return types[b.type].isDependant(a.type) ? SORT.BEFORE : SORT.SAME;
-    });
-    for (const el of data.objects) {
-      this._canvas.add(this._types[el.type].factory(el));
+    this._canvas._objects = [];
+    const positions = {};
+    for (let pos = 0; pos < data.objects.length; pos ++) {
+      const id = data.objects[pos].type+pos;
+      data.objects[pos]._internalSortId = id;
+      positions[id] = pos;
     }
+    sortByTypes(this._types, data.objects);
+    const ordered = new Array(data.objects.length).fill(null);
+    for (const el of data.objects) {
+      const object = this._types[el.type].factory(el);
+      this._canvas.add(object);
+      ordered[positions[el._internalSortId]] = object;
+    }
+    this._canvas._objects = ordered;
     this._canvas.renderOnAddRemove = drawOnChange;
     this._canvas.renderAll();
   }

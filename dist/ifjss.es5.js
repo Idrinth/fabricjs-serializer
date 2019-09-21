@@ -7,11 +7,6 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 var idrinth = idrinth || {};
 
 idrinth.FabricJsSerializer = function () {
-  var SORT = {
-    BEFORE: -1,
-    AFTER: 1,
-    SAME: 0
-  };
   var FORCE_SAVE_PROPERTIES = ['left', 'top', 'type'];
 
   var hasProperty = function hasProperty(
@@ -89,38 +84,93 @@ idrinth.FabricJsSerializer = function () {
     return Type;
   }();
 
-  var isFabricClass = function isFabricClass(
-  /* string */
-  property) {
-    if (!property.match(/^[A-Z]/)) {
-      return false;
-    }
-
-    if (typeof fabric[property] !== 'function') {
-      return false;
-    }
-
-    if (!hasProperty(fabric[property].prototype, 'type')) {
-      return false;
-    }
-
-    return typeof fabric[property].prototype.type === 'string';
+  var getFabricTypes = function getFabricTypes() {
+    return {
+      circle: new Type(function (config) {
+        return new fabric.Circle(config);
+      }, []),
+      ellipse: new Type(function (config) {
+        return new fabric.Ellipse(config);
+      }, []),
+      // @todo this likely needs something changed to handle internal objects
+      group: new Type(function (config) {
+        return new fabric.Group(config.objects, config);
+      }, []),
+      'i-text': new Type(function (config) {
+        return new fabric.IText(config.text, config);
+      }, []),
+      image: new Type(function (config) {
+        return new fabric.Image.fromURL(config.src, config);
+      }, []),
+      line: new Type(function (config) {
+        return new fabric.Line(config.points, config);
+      }, []),
+      linear: new Type(function (config) {
+        return new fabric.Gradient(config);
+      }, []),
+      object: new Type(function (config) {
+        return new fabric.Object(config);
+      }, []),
+      path: new Type(function (config) {
+        return new fabric.Path(config.path, config);
+      }, []),
+      point: new Type(function (config) {
+        return new fabric.Point(config.x, config.y);
+      }, []),
+      polygon: new Type(function (config) {
+        return new fabric.Polygon(config.points, config);
+      }, []),
+      polyline: new Type(function (config) {
+        return new fabric.Polyline(config.points, config);
+      }, []),
+      rect: new Type(function (config) {
+        return new fabric.Rect(config);
+      }, []),
+      radial: new Type(function (config) {
+        return new fabric.Gradient(config);
+      }, []),
+      text: new Type(function (config) {
+        return new fabric.Text(config.text, config);
+      }, []),
+      textbox: new Type(function (config) {
+        return new fabric.Textbox(config.text, config);
+      }, []),
+      triangle: new Type(function (config) {
+        return new fabric.Triangle(config);
+      }, [])
+    };
   };
 
-  var getFabricTypes = function getFabricTypes() {
-    var types = {
-      radial: new Type(fabric.Gradient, [])
-    };
+  var SORT = {
+    BEFORE: -1,
+    AFTER: 1,
+    SAME: 0
+  };
 
-    for (var _i = 0, _Object$keys = Object.keys(fabric); _i < _Object$keys.length; _i++) {
-      var property = _Object$keys[_i];
-
-      if (isFabricClass(property)) {
-        types[fabric[property].prototype.type] = new Type(fabric[property], []);
+  var sortByTypes = function sortByTypes(
+  /* {[string]:Type} */
+  types,
+  /* fabric.Object[] */
+  objects) {
+    objects.sort(function (
+    /* fabric.Object */
+    a,
+    /* fabric.Object */
+    b) {
+      if (!hasProperty(types, a.type)) {
+        throw new Error("Can't find a definition for given type ".concat(a.type));
       }
-    }
 
-    return types;
+      if (!hasProperty(types, b.type)) {
+        throw new Error("Can't find a definition for given type ".concat(b.type));
+      }
+
+      if (types[a.type].isDependant(b.type)) {
+        return SORT.AFTER;
+      }
+
+      return types[b.type].isDependant(a.type) ? SORT.BEFORE : SORT.SAME;
+    });
   };
 
   var FabricJsSerializer =
@@ -183,26 +233,17 @@ idrinth.FabricJsSerializer = function () {
           }
         }
 
-        var types = this._types;
-        data.objects.sort(function (
-        /* fabric.Object */
-        a,
-        /* fabric.Object */
-        b) {
-          if (!hasProperty(types, a.type)) {
-            throw new Error("Can't find a definition for given type ".concat(a.type));
-          }
+        this._canvas._objects = [];
+        var positions = {};
 
-          if (!hasProperty(types, b.type)) {
-            throw new Error("Can't find a definition for given type ".concat(b.type));
-          }
+        for (var pos = 0; pos < data.objects.length; pos++) {
+          var id = data.objects[pos].type + pos;
+          data.objects[pos]._internalSortId = id;
+          positions[id] = pos;
+        }
 
-          if (types[a.type].isDependant(b.type)) {
-            return SORT.AFTER;
-          }
-
-          return types[b.type].isDependant(a.type) ? SORT.BEFORE : SORT.SAME;
-        });
+        sortByTypes(this._types, data.objects);
+        var ordered = new Array(data.objects.length).fill(null);
         var _iteratorNormalCompletion2 = true;
         var _didIteratorError2 = false;
         var _iteratorError2 = undefined;
@@ -211,7 +252,11 @@ idrinth.FabricJsSerializer = function () {
           for (var _iterator2 = data.objects[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
             var _el = _step2.value;
 
-            this._canvas.add(this._types[_el.type].factory(_el));
+            var object = this._types[_el.type].factory(_el);
+
+            this._canvas.add(object);
+
+            ordered[positions[_el._internalSortId]] = object;
           }
         } catch (err) {
           _didIteratorError2 = true;
@@ -228,6 +273,7 @@ idrinth.FabricJsSerializer = function () {
           }
         }
 
+        this._canvas._objects = ordered;
         this._canvas.renderOnAddRemove = drawOnChange;
 
         this._canvas.renderAll();
@@ -247,8 +293,8 @@ idrinth.FabricJsSerializer = function () {
 
             var result = {};
 
-            for (var _i2 = 0, _Object$keys2 = Object.keys(data); _i2 < _Object$keys2.length; _i2++) {
-              var property = _Object$keys2[_i2];
+            for (var _i = 0, _Object$keys = Object.keys(data); _i < _Object$keys.length; _i++) {
+              var property = _Object$keys[_i];
 
               if (types[data.type].isSaveworthy(property, data[property])) {
                 result[property] = data[property];

@@ -115,7 +115,7 @@ const replaceRequires = (/* string */ code) => {
 };
 
 (() => {
-  let code = 'var FabricJsSerializer=require(\'index\');';
+  let code = 'const FabricJsSerializer=require(\'index\');';
   code += 'return FabricJsSerializer;';
   code = `idrinth.FabricJsSerializer=(()=>{${ code }})();`;
   code = replaceRequires(`var idrinth=idrinth||{};${ code }`);

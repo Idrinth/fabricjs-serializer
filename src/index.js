@@ -1,8 +1,8 @@
 const fabric = require('./fabric');
-const SORT = require('./SORT');
 const Type = require('./Type');
 const hasProperty = require('./hasProperty');
 const getFabricTypes = require('./getFabricTypes');
+const sortByTypes = require('./sortByTypes');
 
 module.exports = class FabricJsSerializer {
   constructor(/* fabric.Canvas */ canvas) {
@@ -25,22 +25,21 @@ module.exports = class FabricJsSerializer {
     for (const el of this._canvas._objects) {
       this._canvas.remove(el);
     }
-    const types = this._types;
-    data.objects.sort((/* fabric.Object */ a, /* fabric.Object */ b) => {
-      if (! hasProperty(types, a.type)) {
-        throw new Error(`Can't find a definition for given type ${ a.type }`);
-      }
-      if (! hasProperty(types, b.type)) {
-        throw new Error(`Can't find a definition for given type ${ b.type }`);
-      }
-      if (types[a.type].isDependant(b.type)) {
-        return SORT.AFTER;
-      }
-      return types[b.type].isDependant(a.type) ? SORT.BEFORE : SORT.SAME;
-    });
-    for (const el of data.objects) {
-      this._canvas.add(this._types[el.type].factory(el));
+    this._canvas._objects = [];
+    const positions = {};
+    for (let pos = 0; pos < data.objects.length; pos ++) {
+      const id = data.objects[pos].type+pos;
+      data.objects[pos]._internalSortId = id;
+      positions[id] = pos;
     }
+    sortByTypes(this._types, data.objects);
+    const ordered = new Array(data.objects.length).fill(null);
+    for (const el of data.objects) {
+      const object = this._types[el.type].factory(el);
+      this._canvas.add(object);
+      ordered[positions[el._internalSortId]] = object;
+    }
+    this._canvas._objects = ordered;
     this._canvas.renderOnAddRemove = drawOnChange;
     this._canvas.renderAll();
   }
